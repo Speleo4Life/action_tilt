@@ -180,19 +180,19 @@ FullExpSeq = [TrainTrials; ExpTrialSeq];
 l = transpose([1:length(FullExpSeq(:,1))]); %#ok<*NBRAK>
 
 % preallocate matrix for the illusion condition schedule
-illus_sched = false(length(l), 2)
+illus_sched = false(length(l), 2);
 
 
 % determine row indices from FullExpSeq corresponding with the randomly
 % generated sequencing of STI and RFI trials
-illus_vect = FullExpSeq(:,1)
-[sti_row_idx] = find(illus_vect==1)
-[rfi_row_idx] = find(illus_vect==2)
+illus_vect = FullExpSeq(:,1);
+[sti_row_idx] = find(illus_vect==1);
+[rfi_row_idx] = find(illus_vect==2);
 
 % define row indices of the STI illus_sched column (col 1) accordingly
-illus_sched(sti_row_idx, 1) = true
+illus_sched(sti_row_idx, 1) = true;
 % define row indices of the RFI illus_sched column (col 2) accordingly
-illus_sched(rfi_row_idx, 2) = true
+illus_sched(rfi_row_idx, 2) = true;
 
 % preallocate results matrices 
 keyResp = NaN * ones(length(l), 1);
@@ -208,51 +208,80 @@ phase = 0; % phase of the sin wave grating
 freq = 15/180; 
 contrastPreMultiplicator = 0.50;
 contrast = 2;
-backgroundColorOffset = [0, 0, 0, 0]
+backgroundColorOffset = [0, 0, 0, 0];
 auxParameters = [phase, freq, contrast, 0;
                  phase+90, freq, contrast, 0];
-    
-             
-% create the grating patterns
-[induceID, induceRect] = CreateProceduralSquareWaveGrating(windowExp,...             
-        width, height, backgroundColorOffset, radius(1), contrastPreMultiplicator);  %#ok<*ASGLU>
-[targetID, targetRect] = CreateProceduralSquareWaveGrating(windowExp,... 
-        (width/5), (height/5), backgroundColorOffset, radius(2), contrastPreMultiplicator);  
-    
-% define placement location for the grating patterns
-induceRect = CenterRectOnPoint(induceRect, xCenter, yCenter);  
-targetRect = CenterRectOnPoint(targetRect, xCenter, yCenter);
 
+% define primary RFI parameters   
+frameRead = imread('rfisq.jpg');
+yCord = 12;
+smooth = 2;
+theta = 6;
+% Generating an anti-alised (smooth) line to form the rod requires that
+% we call the Screen('DrawLines') function. Therefore, we have to
+% define the coordinates of each end of the line that forms an angle
+% theta with the vertical of our screen (i.e. the y-axis). Recall
+% that the trigonometric function tan(theta) can be expressed 
+% as the ratio: opposite/adjacent (of a given right angle triangle); If we 
+% imagine that the middle of our screen is the point of origin on a  
+% cartesian plane (0,0), then we define y-coordinate corresponding to
+% half the length of our line; so we simply use y/tan(theta) to get the x 
+% coordinate; note that the y-coordinate in this case represents the 
+% length of the adjacent side of a right angle triangle that forms one of
+% its vertices at the point of origin. Our line--well half of it--is the 
+% hypotenuse! (In MatLab, the default is for trigonometric functions to 
+% operate on radians, so you have to convert from degrees.) We could have 
+% similarly approached this problem by directly defining the length of our 
+% line instead of a more 'arbitrary' value. Then after dividing that by 
+% two, we can use the the trig identities sin and cos to get absolute 
+% values for the x and y coordinates, respectively. The matrix below
+% for linCords gives you the coordinate positions for each end of the line
+xCord = yCord/tan(pi/2-(theta*(pi/180))); 
+lineCords = [-xCord xCord; yCord -yCord]; 
+ExpLineCords = [NaN NaN; yCord -yCord];
+
+
+% create the grating patterns
+[induceID, STIinduceRect] = CreateProceduralSquareWaveGrating(windowExp,...             
+        width, height, backgroundColorOffset, radius(1), contrastPreMultiplicator);  %#ok<*ASGLU>
+[targetID, STItargetRect] = CreateProceduralSquareWaveGrating(windowExp,... 
+        (width/5), (height/5), backgroundColorOffset, radius(2), contrastPreMultiplicator);  
+RFIinduceRect = [-radius(1) -radius(1) radius(1) radius(1)];    
+frame_image = Screen('MakeTexture', windowExp, frameRead);    
+% define placement location for the grating patterns
+STIinduceRect = CenterRectOnPoint(STIinduceRect, xCenter, yCenter);  
+STItargetRect = CenterRectOnPoint(STItargetRect, xCenter, yCenter);
+RFIinduceRect = CenterRectOnPoint(RFIinduceRect, xCenter, yCenter); 
 
 % Set the pixel width for stimuli outlines
 penWidthPixels = 4;
 
-    % Preparing and displaying the welcome screen
-    % A text size of 26 pixels is readable on most screens:
-    Screen('TextSize', windowExp, 26);
+% Preparing and displaying the welcome screen
+% A text size of 26 pixels is readable on most screens:
+Screen('TextSize', windowExp, 26);
     
-    % This is our intro text. The '\n' sequence creates a line-feed:
-    InstructText = ['In this experiment you are asked to judge and report on the orientation of two stimulus types.\n' ...
-                    '                                             \n' ...
-                    'Each trial will consist of TWO brief stimulus presentations: 1) A context 2) A target.\n' ...                                                        
-                    '                                                \n' ...
-                    'Your job is to judge and report on the orientation of the SMALLER circular grating pattern\n' ...                      
-                    '                                                \n' ...
-                    '            Press the ''Z'' KEY if the target grating is oriented counter clock-wise (to the left)\n' ...
-                    'Press the ''/'' KEY if the target grating is oriented clock-wise (to the right)\n' ...
-                    '                                                \n' ...
-                    'You will begin with ' num2str(nTrain) ' training trials\n' ...
-                    '(Press any key to initiate the training.)\n'];
+% This is our intro text. The '\n' sequence creates a line-feed:
+InstructText = ['In this experiment you are asked to judge and report on the orientation of two stimulus types.\n' ...
+                '                                             \n' ...
+                'Each trial will consist of TWO brief stimulus presentations: 1) A context 2) A target.\n' ...                                                        
+                '                                                \n' ...
+                'Your job is to judge and report on the orientation of the SMALLER circular grating pattern\n' ...                      
+                '                                                \n' ...
+                '            Press the ''Z'' KEY if the target grating is oriented counter clock-wise (to the left)\n' ...
+                'Press the ''/'' KEY if the target grating is oriented clock-wise (to the right)\n' ...
+                '                                                \n' ...
+                'You will begin with ' num2str(nTrain) ' training trials\n' ...
+                '(Press any key to initiate the training.)\n'];
          
-    % Draw 'InstructionsText', centered in the display window:
-    DrawFormattedText(windowExp, InstructText, 'center', 'center');
+% Draw 'InstructionsText', centered in the display window:
+DrawFormattedText(windowExp, InstructText, 'center', 'center');
 
-    % Show the drawn text at next display refresh cycle:
-    Screen('Flip', windowExp)
+% Show the drawn text at next display refresh cycle:
+Screen('Flip', windowExp)
     
-    % Wait for key stroke. This will first make sure all keys are
-    % released, then wait for a keypress and release:
-    KbWait([], 3);
+% Wait for key stroke. This will first make sure all keys are
+% released, then wait for a keypress and release:
+KbWait([], 3);
     
 %----------------------------------------------------------------------
 %                       Timing Information
@@ -294,10 +323,10 @@ rightKey = KbName('/?');
     % initiate loop through the radomized training and exp trial sequence
     k = 0
     while (k < length(l))
-    k = k + 1;    
+        k = k + 1;
         % get the trial number
         trialNo = k; 
-        % trial ID (illusion type): only 1 atm, i.e. STI
+        % trial ID (illusion type)
         trialID = FullExpSeq(k, 1);  
         % determine the SOA (in frames) for the given trial
         soaTrial = soaRefFrames(FullExpSeq(k, 2)); 
@@ -305,19 +334,20 @@ rightKey = KbName('/?');
         induceTilt = FullExpSeq(k, 3) * angle(1);   
         % get the target tilt angle ref
         targetTilt = FullExpSeq(k, 4) * angle(2);
-        
+        % get rod target drawing coordinates
+        ExpLineCords(1,:) = FullExpSeq(k, 4) * lineCords(1,:);
         
         % Create a stimulus schedule matrix to determine when inducing
         % stimulus and target stimulus will be shown
-        if soaTrial == 0 
+        if soaTrial == 0
             targetTimeFrames = 0;
-             target_on_frames = (soaTrial+1):(soaTrial...
-            +(presTimeFrames)+targetTimeFrames);
+            target_on_frames = (soaTrial+1):(soaTrial...
+                +(presTimeFrames)+targetTimeFrames);
         elseif soaTrial ~= 0
             targetTimeFrames = 12;
             target_on_frames = (presTimeFrames+soaTrial+1):(soaTrial...
-            +presTimeFrames+targetTimeFrames);
-        end  
+                +presTimeFrames+targetTimeFrames);
+        end
    
         % Row 1 - inducing stimulus
         % Row 2 - target stimulus
@@ -331,52 +361,59 @@ rightKey = KbName('/?');
         stim_sched(2,target_on_frames) = 1;
         
         % Change the blend function to draw an antialiased fixation point
-        % in the centre of the screen
-           
-        Screen('BlendFunction', windowExp, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
-        
+        % in the centre of the screen   
+        Screen('BlendFunction', windowExp, 'GL_SRC_ALPHA',...
+            'GL_ONE_MINUS_SRC_ALPHA');
         
         if k==nTrain+1  % before the first test trial
-            DrawFormattedText(windowExp, 'Are you ready for the experiment?\n(Press any key to start experiment)', 'center', 'center', black);
-            Screen('Flip', windowExp);
+            DrawFormattedText(windowExp, 'Are you ready for the experiment?\n(Press any key to start experiment)',...
+                'center', 'center', black);
+           vbl = Screen('Flip', windowExp);
             KbWait([], 3); 
         end
-        
-        
+     
         % Flip again to sync us to the vertical retrace at the same time as
         % drawing our fixation point
         Screen('DrawDots', windowExp, [xCenter; yCenter], 10, black, [], 2);
         vbl = Screen('Flip', windowExp);
         
         % now we present the inter-tial interval
-         for frame = 1:InterTrlIntFrames - 1
-        
+        for frame = 1:InterTrlIntFrames - 1
             % Draw the fixation point
             Screen('DrawDots', windowExp, [xCenter; yCenter], 10, black, [], 2);
-
             % Flip to the screen
             vbl = Screen('Flip', windowExp, vbl + (waitframes - 0.5) * ifi);
-            
-         end
+        end
         
-         vbl = Screen('Flip', windowExp);
+         vbl = Screen('Flip', windowExp, vbl + (waitframes - 0.5) * ifi);
          
          for f = 1:stim_sched_len
              if stim_sched(1,f) && illus_sched(k, 1) % draw sti inducing stim
                  % Set the right blend function for drawing the inducing stim
-                Screen('BlendFunction', windowExp, 'GL_ONE', 'GL_ZERO');
-                Screen('DrawTexture', windowExp, induceID, [], induceRect,...
-                    induceTilt, [], [], [], [], [], auxParameters(1,:));
-                Screen('FrameOval', windowExp, black, induceRect, penWidthPixels);
+                 Screen('BlendFunction', windowExp, 'GL_ONE', 'GL_ZERO');
+                 Screen('DrawTexture', windowExp, induceID, [], STIinduceRect,...
+                     induceTilt, [], [], [], [], [], auxParameters(1,:));
+                 Screen('FrameOval', windowExp, black, STIinduceRect, penWidthPixels);
              end
              if stim_sched(2,f) && illus_sched(k, 1) % draw sti target stim
-                Screen('BlendFunction', windowExp, 'GL_ONE', 'GL_ZERO');
-                Screen('DrawTexture', windowExp, targetID, [], targetRect,...
-                    targetTilt, [], [], [], [], [], auxParameters(2,:));
-                Screen('FrameOval', windowExp, black, targetRect, penWidthPixels);
+                 Screen('BlendFunction', windowExp, 'GL_ONE', 'GL_ZERO');
+                 Screen('DrawTexture', windowExp, targetID, [], STItargetRect,...
+                     targetTilt, [], [], [], [], [], auxParameters(2,:));
+                 Screen('FrameOval', windowExp, black, STItargetRect, penWidthPixels);
              end
-             
-             vbl = Screen('Flip', windowExp, vbl + (waitframes - 0.5) * ifi);   
+             if stim_sched(1,f) && illus_sched(k, 2) % draw rfi inducing stim
+                 % Set the right blend function for drawing the inducing stim
+                 Screen('BlendFunction', windowExp, 'GL_ONE', 'GL_ZERO');
+                 Screen('DrawTexture', windowExp, frame_image, [],... 
+                     RFIinduceRect, induceTilt, [], [], [], [], [], []);
+             end
+             if stim_sched(2,f) && illus_sched(k, 2)
+                 Screen('BlendFunction', windowExp, 'GL_SRC_ALPHA',...
+                     'GL_ONE_MINUS_SRC_ALPHA');
+                 Screen('DrawLines', windowExp, ExpLineCords, penWidthPixels,...
+                     black, [xCenter yCenter], 2, []);
+             end
+             vbl = Screen('Flip', windowExp, vbl + (waitframes - 0.5) * ifi);
          end
                   
     Screen('BlendFunction', windowExp, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
@@ -432,8 +469,8 @@ rightKey = KbName('/?');
             WaitSecs(1);
             
         elseif abs(response) == check 
-            DrawFormattedText(windowExp, 'Timeout! Trial aborted...', 'center',...
-                'center', [0, 0, 0]);
+            DrawFormattedText(windowExp, 'Timeout! Trial aborted...',... 
+                'center', 'center', [0, 0, 0]);
             vbl = Screen('Flip', windowExp);
             k = k - 1
             WaitSecs(1);
