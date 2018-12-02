@@ -45,7 +45,7 @@ if isempty(answer)
    return
 end
 [subid, date] = deal(answer{:}); 
-outputname = [subid '_' date '.txt'];
+outputname = [subid '_' date '.csv'];
 if exist(outputname)==2 %#ok<EXIST> % check to avoid overiding an existing file
     fileproblem = input('That file already exists! Append a .x (1), overwrite (2), or break (3/default)?');
     if isempty(fileproblem) || fileproblem==3
@@ -525,7 +525,7 @@ rightKey = KbName('/?');
     subjectID(:,1) = subid;
     data_atilt = table(subjectID, trial_num, FullExpSeq, catg_congruency,...
         response_time, corr)   
-    writetable(data_atilt, outputname,'Delimiter',',');   
+    writetable(data_atilt, outputname);   
     ShowCursor;
     sca;
  
