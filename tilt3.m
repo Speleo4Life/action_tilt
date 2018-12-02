@@ -27,26 +27,37 @@
 %----------------------------------------------------------------------
 %                          Exp. Launch Dialog
 %----------------------------------------------------------------------
-prompt = {'Please Enter the Subject ID'};
-blank = {''};
+% clear the screen
+sca;
+close all;
+clearvars;
 
+% launch dialog
+str = date;
+prompt = {'Subject ID', 'Date'};
+blank = {'', str};
 options.Resize='off';
 options.WindowStyle='normal';
 options.Interpreter='none';
+answer = inputdlg(prompt, 'Tilt', 1, blank, options);
 
-answer = inputdlg(prompt, 'Action Tilt', [1 50], blank, options);
 if isempty(answer)
    return
+end
+[subid, date] = deal(answer{:}); 
+outputname = [subid '_' date '.txt'];
+if exist(outputname)==2 %#ok<EXIST> % check to avoid overiding an existing file
+    fileproblem = input('That file already exists! Append a .x (1), overwrite (2), or break (3/default)?');
+    if isempty(fileproblem) || fileproblem==3
+        return;
+    elseif fileproblem==1
+        outputname = [outputname '.x'];
+    end
 end
 
 %----------------------------------------------------------------------
 %                   Setup Pyschtoolbox & Key Defaults
 %----------------------------------------------------------------------
-
-% clear the screen
-sca;
-close all;
-clearvars;
 
 % Hide the cursor
 HideCursor;
@@ -86,14 +97,6 @@ ifi = Screen('GetFlipInterval', windowExp);
 % get the refresh rate of our screen 
 % the relationship between the two is: ifi = 1 / hertz
 hertz = FrameRate(windowExp);
-
-% get color depth of the pixel in bits
-pixelSize = Screen('PixelSize', windowExp);
-
-% get the maximum coded luminance level (this should be 1)
-maxLum = Screen('ColorRange', windowExp);
-    
-
 
 % flip to clear
 Screen('Flip', windowExp);
@@ -156,7 +159,7 @@ rfi_table=[2   1   1   1;
            2   6  -1   1;
            2   6  -1  -1];
 
-exp_matrix = [sti_table; rfi_table]       
+exp_matrix = [sti_table; rfi_table];       
        
 % define number of trials
 nTrials = size(exp_matrix, 1);
@@ -502,7 +505,7 @@ rightKey = KbName('/?');
            corr(i) = "correct";
         elseif (FullExpSeq(i,5) * -1) == FullExpSeq(i,6)
            corr(i) = "incorrect";
-        elseif isnan(FullExpSeq(i,5))
+        elseif isnan(FullExpSeq(i,5)) 
            corr(i) = "timeout";
         end
     end    
@@ -517,8 +520,12 @@ rightKey = KbName('/?');
     catg_congruency(incon_trials_midx) = "incongruent";
     FullExpSeq = FullExpSeq(:, 2:5);
     trial_num = l;
-    data_atilt = table(trial_num, FullExpSeq, catg_congruency,...
+    subid = convertCharsToStrings(subid);
+    subjectID = strings(length(l),1);
+    subjectID(:,1) = subid;
+    data_atilt = table(subjectID, trial_num, FullExpSeq, catg_congruency,...
         response_time, corr)   
+    writetable(data_atilt, outputname,'Delimiter',',');   
     ShowCursor;
     sca;
  
